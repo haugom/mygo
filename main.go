@@ -5,8 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/gorilla/sessions"
+	"github.com/haugom/gwp/mygo/config"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	prommiddleware "github.com/slok/go-prometheus-middleware"
@@ -34,6 +36,11 @@ const (
 
 var Store *redistore.RediStore
 
+type auth0profilemap map[string]interface{}
+type auth0profile struct {
+	Data auth0profilemap
+}
+
 type key int
 const stateKey key = 0
 
@@ -53,6 +60,15 @@ func stateFromContext(ctx context.Context) *permissions.Permissions {
 }
 
 func main() {
+
+	environment := flag.String("e", "development", "")
+	flag.Usage = func() {
+		fmt.Println("Usage: main -e {mode}")
+		os.Exit(1)
+	}
+	flag.Parse()
+	config.Init(*environment)
+
 	// Create our middleware.
 	promMiddleware := prommiddleware.NewDefault()
 
@@ -61,6 +77,8 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	gob.Register(&auth0profile{})
 
 	// Fetch new store.
 	//Store, err := redistore.NewRediStore(10, "tcp", ":6379", "", []byte(os.Getenv("SESSION_KEY")))
@@ -87,10 +105,13 @@ func main() {
 	// Add the middleware to negroni.
 	n.Use(promnegroni.Handler("", promMiddleware))
 	// Enable the permissions middleware
-	//n.Use(perm)
+	n.Use(perm)
 
 	// Finally set our router on negroni.
 	n.UseHandler(mux)
+
+	files := http.FileServer(http.Dir("public"))
+	mux.Handle("/public/", http.StripPrefix("/public/", files))
 
 	mux.Handle("/", stdChain.Then(http.HandlerFunc(index)))
 	mux.Handle("/register", stdChain.Then(http.HandlerFunc(register)))
@@ -144,11 +165,6 @@ func index(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-
-	// Add a value.
-	fmt.Printf("%s\n", session.Values["foo"])
-	session.Values["foo"] = "bar"
-	fmt.Printf("%s\n", session.Values["foo"])
 
 	// Save.
 	if err = sessions.Save(r, w); err != nil {
@@ -245,9 +261,9 @@ func callback(w http.ResponseWriter, r *http.Request) {
 	domain := "haugom.eu.auth0.com"
 
 	conf := &oauth2.Config{
-		ClientID:     "VJNsGyn0yG8tmKGYVzWqJ41aHGAgc4PL",
-		ClientSecret: os.Getenv("CLIENT_SECRET"),
-		RedirectURL:  "http://localhost:3000/callback",
+		ClientID:     config.GetConfig().GetString("CLIENT_ID"),
+		ClientSecret: config.GetConfig().GetString("CLIENT_SECRET"),
+		RedirectURL:  config.GetConfig().GetString("CALLBACK"),
 		Scopes:       []string{"openid", "profile"},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://" + domain + "/authorize",
@@ -284,11 +300,12 @@ func callback(w http.ResponseWriter, r *http.Request) {
 
 	defer resp.Body.Close()
 
-	var profile map[string]interface{}
+	var profile auth0profilemap
 	if err = json.NewDecoder(resp.Body).Decode(&profile); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	profilemap:= auth0profile{profile}
 
 	session, err = Store.Get(r, "auth-session")
 	if err != nil {
@@ -298,7 +315,7 @@ func callback(w http.ResponseWriter, r *http.Request) {
 
 	session.Values["id_token"] = token.Extra("id_token")
 	session.Values["access_token"] = token.AccessToken
-	session.Values["profile"] = profile
+	session.Values["profile"] = profilemap
 	err = session.Save(r, w)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -315,9 +332,9 @@ func auth0Login(w http.ResponseWriter, r *http.Request) {
 	aud := "mygo2"
 
 	conf := &oauth2.Config{
-		ClientID:     "VJNsGyn0yG8tmKGYVzWqJ41aHGAgc4PL",
-		ClientSecret: os.Getenv("CLIENT_SECRET"),
-		RedirectURL:  "http://localhost:3000/callback",
+		ClientID:     config.GetConfig().GetString("CLIENT_ID"),
+		ClientSecret: config.GetConfig().GetString("CLIENT_SECRET"),
+		RedirectURL:  config.GetConfig().GetString("CALLBACK"),
 		Scopes:       []string{"openid", "profile"},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://" + domain + "/authorize",
@@ -369,7 +386,27 @@ func user(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	e := templates.ExecuteTemplate(w, "user.html", session.Values["profile"])
+	val := session.Values["profile"]
+	var profile = &auth0profile{}
+	var templeateData = auth0profilemap{}
+	if p, ok := val.(*auth0profile); !ok {
+		// Handle the case that it's not an expected type
+		log.Println("NOT OK")
+		templeateData["loggedin"] = false
+		//log.Println(profile)
+	} else {
+		log.Println("IS OK")
+		log.Println(profile.Data)
+		profile = p
+		templeateData["loggedin"] = true
+		templeateData["picture"] = profile.Data["picture"]
+		templeateData["nickname"] = profile.Data["nickname"]
+		templeateData["roles"] = profile.Data["https://haugom.org/roles"]
+	}
+
+
+
+	e := templates.ExecuteTemplate(w, "user.html", templeateData)
 	if e != nil {
 		log.Println(e)
 	}
@@ -387,8 +424,8 @@ func auth0Logout(w http.ResponseWriter, r *http.Request) {
 
 	Url.Path += "/v2/logout"
 	parameters := url.Values{}
-	parameters.Add("returnTo", "http://localhost:3000")
-	parameters.Add("client_id", "VJNsGyn0yG8tmKGYVzWqJ41aHGAgc4PL")
+	parameters.Add("returnTo", config.GetConfig().GetString("HOME"))
+	parameters.Add("client_id", config.GetConfig().GetString("CLIENT_ID"))
 	Url.RawQuery = parameters.Encode()
 
 	http.Redirect(w, r, Url.String(), http.StatusTemporaryRedirect)
