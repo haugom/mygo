@@ -68,6 +68,7 @@ func main() {
 	}
 	flag.Parse()
 	config.Init(*environment)
+	log.Printf("redis-cache at: %s\n", config.GetConfig().GetString("REDIS_HOST"))
 
 	// Create our middleware.
 	promMiddleware := prommiddleware.NewDefault()
@@ -82,7 +83,7 @@ func main() {
 
 	// Fetch new store.
 	//Store, err := redistore.NewRediStore(10, "tcp", ":6379", "", []byte(os.Getenv("SESSION_KEY")))
-	store, err := redistore.NewRediStoreWithDB(10, "tcp", ":6379", "", "1", []byte("secret-key"))
+	store, err := redistore.NewRediStoreWithDB(10, "tcp", config.GetConfig().GetString("REDIS_HOST"), "", "1", []byte("secret-key"))
 	if err != nil {
 		panic(err)
 	}
