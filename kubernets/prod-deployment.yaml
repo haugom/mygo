@@ -1,0 +1,7 @@
+---
+context: haugom
+global:
+  image_tag: '0.13'
+  hostname: mygo.k8s.cloud.haugom.org
+include: 
+  - name: deployment

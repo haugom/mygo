@@ -1,10 +1,9 @@
 ---
 context: haugom
 global:
-  image_tag: 0.5
-  hostname: mygo.k8s.cloud.haugom.org
   url: https://mygo.k8s.cloud.haugom.org
   client_id: to_be_inserted
   client_secret: to_be_inserted
+  redis_key: to_be_inserted
 include: 
-  - name: deployment
+  - name: config

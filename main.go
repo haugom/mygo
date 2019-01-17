@@ -15,8 +15,8 @@ import (
 	promnegroni "github.com/slok/go-prometheus-middleware/negroni"
 	"github.com/urfave/negroni"
 	"github.com/xyproto/permissions2"
-	"gopkg.in/boj/redistore.v1"
 	"golang.org/x/oauth2"
+	"gopkg.in/boj/redistore.v1"
 	"html/template"
 	"log"
 	"math/rand"
@@ -61,6 +61,9 @@ func stateFromContext(ctx context.Context) *permissions.Permissions {
 
 func main() {
 
+	_ = "breakpoint"
+	log.Println("This is version 0.13")
+
 	environment := flag.String("e", "development", "")
 	flag.Usage = func() {
 		fmt.Println("Usage: main -e {mode}")
@@ -68,13 +71,14 @@ func main() {
 	}
 	flag.Parse()
 	config.Init(*environment)
-	log.Printf("redis-cache at: %s\n", config.GetConfig().GetString("REDIS_HOST"))
+	databaseHost := config.GetConfig().GetString("REDIS_HOST")
+	log.Printf("Redis-cache at: %s\n", databaseHost)
 
 	// Create our middleware.
 	promMiddleware := prommiddleware.NewDefault()
 
 	// New permissions middleware
-	perm, err := permissions.New2()
+	perm, err := permissions.NewWithRedisConf2(0, databaseHost)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -82,8 +86,7 @@ func main() {
 	gob.Register(&auth0profile{})
 
 	// Fetch new store.
-	//Store, err := redistore.NewRediStore(10, "tcp", ":6379", "", []byte(os.Getenv("SESSION_KEY")))
-	store, err := redistore.NewRediStoreWithDB(10, "tcp", config.GetConfig().GetString("REDIS_HOST"), "", "1", []byte("secret-key"))
+	store, err := redistore.NewRediStoreWithDB(10, "tcp", databaseHost, "", "1", []byte(config.GetConfig().GetString("REDIS_KEY")))
 	if err != nil {
 		panic(err)
 	}

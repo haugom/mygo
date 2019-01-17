@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mygo
+  namespace: haugom
+  labels:
+    app: mygo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mygo
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: mygo
+    spec:
+      containers:
+      - name: mygo
+        image: haugom/mygo:{{ .image_tag }}
+        imagePullPolicy: Always
+        # Just spin & wait forever
+        command: [ "/bin/sh", "-c", "--" ]
+        args: [ "while true; do sleep 1; done;" ]
+        ports:
+        - containerPort: 3001
+        - containerPort: 8081
+        - containerPort: 2345
+        volumeMounts:
+          - name: config-vol
+            mountPath: /app/config
+      volumes:
+        - name: config-vol
+          configMap:
+            name: mygo

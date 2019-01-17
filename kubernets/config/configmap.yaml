@@ -7,6 +7,7 @@ data:
     CALLBACK: {{ .url }}/callback
     HOME: {{ .url }}/user
     REDIS_HOST: "redis-cache:6379"
+    REDIS_KEY: "{{ .redis_key }}"
 kind: ConfigMap
 metadata:
   name: mygo

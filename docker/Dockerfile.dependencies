@@ -1,0 +1,13 @@
+FROM golang:1.11.4 as dependencies
+RUN go get github.com/gorilla/sessions
+RUN go get -v github.com/haugom/gwp/mygo/config
+RUN go get github.com/justinas/alice
+RUN go get github.com/prometheus/client_golang/prometheus/promhttp
+RUN go get github.com/slok/go-prometheus-middleware
+RUN go get github.com/slok/go-prometheus-middleware/negroni
+RUN go get github.com/urfave/negroni
+RUN go get github.com/xyproto/permissions2
+RUN go get gopkg.in/boj/redistore.v1
+RUN go get golang.org/x/oauth2
+RUN go get -u github.com/mailgun/godebug
+RUN go get -u github.com/go-delve/delve/cmd/dlv

@@ -10,15 +10,18 @@ WORKDIR /go/src/app
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"'
 
-FROM scratch as runtime
+FROM mygo-dependencies:latest as runtime
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=dependencies /go/pkg /go/pkg
+COPY --from=dependencies /go/bin /go/bin
+COPY --from=build /go/src /go/src
 COPY --from=build /go/src/app/app /app/server
 COPY ./public/ /app/public/
 COPY ./templates/ /app/templates/
 EXPOSE 8081
 EXPOSE 3001
+EXPOSE 2345
 WORKDIR /app
 ENTRYPOINT ["/app/server"]
 
 COPY --from=init /etc/passwd /etc/passwd
-USER scratchuser
