@@ -8,7 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gorilla/sessions"
-	"github.com/haugom/gwp/mygo/config"
+	"github.com/haugom/mygo/config"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	prommiddleware "github.com/slok/go-prometheus-middleware"
@@ -30,13 +30,11 @@ import (
 )
 
 const (
-	GitCommit 		string 	= ""
-	BuildDate    	string 	= ""
-	Version			string 	= ""
 	srvAddr     	string 	= ":3001"
 	metricsAddr 	string	= ":8081"
 )
 
+var GitCommit, BuildDate, Version string
 var Store *redistore.RediStore
 
 type auth0profilemap map[string]interface{}

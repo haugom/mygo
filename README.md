@@ -47,4 +47,4 @@ I split up the deployment in a debug and prod version. The prod image is build o
 
 #### deploy prod
 
-`kontemplate template prod-deployment.yaml --var=image_tag="'$(cat ../VERSION)'" | linkerd inject - | kubectl apply -f -`
+`kontemplate template prod-deployment.yaml --var=image_tag="$(cat ../VERSION)" | linkerd inject - | kubectl apply -f -`
