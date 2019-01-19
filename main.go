@@ -30,8 +30,11 @@ import (
 )
 
 const (
-	srvAddr     = ":3001"
-	metricsAddr = ":8081"
+	GitCommit 		string 	= ""
+	BuildDate    	string 	= ""
+	Version			string 	= ""
+	srvAddr     	string 	= ":3001"
+	metricsAddr 	string	= ":8081"
 )
 
 var Store *redistore.RediStore
@@ -62,7 +65,7 @@ func stateFromContext(ctx context.Context) *permissions.Permissions {
 func main() {
 
 	_ = "breakpoint"
-	log.Println("This is version 0.13")
+	log.Printf("This is version %s, commit: %s, build date: %s\n", Version, GitCommit, BuildDate)
 
 	environment := flag.String("e", "development", "")
 	flag.Usage = func() {
@@ -418,6 +421,13 @@ func user(w http.ResponseWriter, r *http.Request) {
 
 func auth0Logout(w http.ResponseWriter, r *http.Request) {
 	domain := "haugom.eu.auth0.com"
+
+	session, err2 := Store.Get(r, "auth-session")
+	if err2 != nil {
+		http.Error(w, err2.Error(), http.StatusInternalServerError)
+		return
+	}
+	session.Values["profile"] = ""
 
 	var Url *url.URL
 	Url, err := url.Parse("https://" + domain)

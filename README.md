@@ -28,9 +28,9 @@ I split up the deployment in a debug and prod version. The prod image is build o
 
 #### build image
 
-`docker build -t haugom/mygo:TAG -f docker/Dockerfile .`
+`docker build -t haugom/mygo:$(cat ./VERSION) -f docker/Dockerfile .`
 
-`docker push haugom/mygo:TAG`
+`docker push haugom/mygo:$(cat ./VERSION)`
 
 #### build debug container
 
@@ -44,3 +44,7 @@ I split up the deployment in a debug and prod version. The prod image is build o
 `docker build -t haugom/mygo-dependencies:latest -f docker/Dockerfile.dependencies .`
 
 `docker push haugom/mygo-dependencies:latest`
+
+#### deploy prod
+
+`kontemplate template prod-deployment.yaml --var=image_tag="'$(cat ../VERSION)'" | linkerd inject - | kubectl apply -f -`
