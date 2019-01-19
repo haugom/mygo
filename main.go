@@ -118,7 +118,7 @@ func main() {
 	files := http.FileServer(http.Dir("public"))
 	mux.Handle("/public/", http.StripPrefix("/public/", files))
 
-	mux.Handle("/", stdChain.Then(http.HandlerFunc(index)))
+	mux.Handle("/index2", stdChain.Then(http.HandlerFunc(index)))
 	mux.Handle("/register", stdChain.Then(http.HandlerFunc(register)))
 	mux.Handle("/confirm", stdChain.Then(http.HandlerFunc(confirm)))
 	mux.Handle("/remove", stdChain.Then(http.HandlerFunc(remove)))
@@ -131,6 +131,7 @@ func main() {
 	mux.Handle("/callback", stdChain.Then(http.HandlerFunc(callback)))
 	mux.Handle("/login2", stdChain.Then(http.HandlerFunc(auth0Login)))
 	mux.Handle("/home", stdChain.Then(http.HandlerFunc(home)))
+	mux.Handle("/", stdChain.Then(http.HandlerFunc(home)))
 	mux.Handle("/user", stdChain.Then(http.HandlerFunc(user)))
 	mux.Handle("/logout2", stdChain.Then(http.HandlerFunc(auth0Logout)))
 	perm.SetDenyFunction(http.HandlerFunc(deny))
@@ -376,10 +377,13 @@ func auth0Login(w http.ResponseWriter, r *http.Request) {
 
 func home(w http.ResponseWriter, r *http.Request) {
 	templates := template.Must(template.ParseFiles("templates/home.html"))
-	e := templates.ExecuteTemplate(w, "home.html", "")
+	data := make(map[string]string)
+	data["version"] = Version
+	e := templates.ExecuteTemplate(w, "home.html", data)
 	if e != nil {
 		log.Println(e)
 	}
+
 }
 
 func user(w http.ResponseWriter, r *http.Request) {
@@ -408,6 +412,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 		templeateData["nickname"] = profile.Data["nickname"]
 		templeateData["roles"] = profile.Data["https://haugom.org/roles"]
 	}
+	templeateData["version"] = Version
 
 
 
@@ -426,6 +431,7 @@ func auth0Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session.Values["profile"] = ""
+	Store.Save(r, w, session)
 
 	var Url *url.URL
 	Url, err := url.Parse("https://" + domain)
