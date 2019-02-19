@@ -13,5 +13,8 @@ spec:
     port: 80
     targetPort: 3001
   - protocol: TCP
+    name: metrics
+    port: 8081
+  - protocol: TCP
     name: debug
     port: 2345
